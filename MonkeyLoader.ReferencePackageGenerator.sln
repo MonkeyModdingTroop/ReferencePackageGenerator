@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34525.116
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonkeyLoader.ReferencePackageGenerator", "MonkeyLoader.ReferencePackageGenerator\MonkeyLoader.ReferencePackageGenerator.csproj", "{C5464D37-4ED6-4220-A4CC-CE9ECDC4F90A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C5464D37-4ED6-4220-A4CC-CE9ECDC4F90A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5464D37-4ED6-4220-A4CC-CE9ECDC4F90A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5464D37-4ED6-4220-A4CC-CE9ECDC4F90A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5464D37-4ED6-4220-A4CC-CE9ECDC4F90A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F2867783-676E-4762-9C8F-469155C4CA83}
+	EndGlobalSection
+EndGlobal
