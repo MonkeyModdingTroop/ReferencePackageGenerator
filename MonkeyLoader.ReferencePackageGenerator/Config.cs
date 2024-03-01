@@ -12,6 +12,14 @@ namespace MonkeyLoader.ReferencePackageGenerator
     [JsonObject]
     public class Config
     {
+        [JsonProperty(nameof(DocumentationPath))]
+        private string? _documentationPath = null;
+
+        public string[] Authors { get; set; } = [];
+
+        [JsonIgnore]
+        public string DocumentationPath => _documentationPath ?? SourcePath;
+
         public string[] ExcludePatterns
         {
             get => Excludes.Select(regex => regex.ToString()).ToArray();
@@ -39,8 +47,21 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonProperty(Required = Required.Always)]
         public string SourcePath { get; set; } = Environment.CurrentDirectory;
 
+        public string[] Tags { get; set; } = [];
+        public string TargetFramework { get; set; }
+
         [JsonProperty(Required = Required.Always)]
         public string TargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Public");
+
+        [JsonIgnore]
+        public Dictionary<string, Version> VersionOverrides { get; set; }
+
+        [JsonProperty(nameof(VersionOverrides))]
+        private Dictionary<string, string> VersionOverrideStrings
+        {
+            get => VersionOverrides?.ToDictionary(entry => entry.Key, entry => entry.Value.ToString(), StringComparer.OrdinalIgnoreCase)!;
+            set => VersionOverrides = value?.ToDictionary(entry => entry.Key, entry => new Version(entry.Value), StringComparer.OrdinalIgnoreCase) ?? new(StringComparer.OrdinalIgnoreCase);
+        }
 
         public Config()
         {

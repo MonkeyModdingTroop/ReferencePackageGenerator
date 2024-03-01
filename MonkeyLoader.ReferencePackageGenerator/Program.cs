@@ -11,28 +11,58 @@ namespace MonkeyLoader.ReferencePackageGenerator
     {
         private static readonly JsonSerializer _jsonSerializer = new();
 
-        private static void GenerateNuGetPackage(string target, AssemblyDefinition assembly)
+        private static string ChangeFileDirectory(string file, string newDirectory)
+            => Path.Combine(newDirectory, Path.GetFileName(file));
+
+        private static string ChangeFileDirectoryAndExtension(string file, string newDirectory, string newExtension)
+            => Path.Combine(newDirectory, $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}");
+
+        private static string ChangeFileExtension(string file, string newExtension)
+            => Path.Combine(Path.GetDirectoryName(file)!, $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}");
+
+        private static void GenerateNuGetPackage(Config config, string target, AssemblyDefinition assembly)
         {
             var builder = new PackageBuilder();
             builder.Id = Path.GetFileNameWithoutExtension(target);
-            builder.Version = new NuGetVersion(assembly.Name.Version);
+
+            builder.Version = config.VersionOverrides.TryGetValue(Path.GetFileName(target), out var versionOverride)
+                ? new NuGetVersion(versionOverride)
+                : new NuGetVersion(assembly.Name.Version);
 
             builder.Title = $"Publicized {Path.GetFileNameWithoutExtension(target)} Reference";
             builder.Description = $"Publicized reference package for {Path.GetFileName(target)}.";
 
-            builder.Authors.Add("Config Authors");
+            builder.Authors.AddRange(config.Authors);
+            builder.Tags.AddRange(config.Tags);
+            builder.Tags.Add("MonkeyLoader");
+            builder.Tags.Add("ReferencePackageGenerator");
+
             //builder.DependencyGroups.Add(new PackageDependencyGroup(
             //    targetFramework: NuGetFramework.Parse("netstandard1.4"),
             //    packages: new[]
             //    {
             //        new PackageDependency("Newtonsoft.Json", VersionRange.Parse("10.0.1"))
             //    }));
-            builder.AddFiles("", target, "ref/net462/");
 
-            using var outputStream = new FileStream(Path.Combine(Path.GetDirectoryName(target)!, $"{Path.GetFileNameWithoutExtension(target)}.nupkg"), FileMode.Create);
+            var destinationPath = $"ref/{config.TargetFramework}/";
+            builder.AddFiles("", target, destinationPath);
+
+            var docFile = ChangeFileDirectoryAndExtension(target, config.DocumentationPath, ".xml");
+            if (File.Exists(docFile))
+            {
+                builder.AddFiles("", docFile, destinationPath);
+            }
+            else
+            {
+                docFile = ChangeFileDirectoryAndExtension(target, config.SourcePath, ".xml");
+                if (File.Exists(docFile))
+                    builder.AddFiles("", docFile, destinationPath);
+            }
+
+            using var outputStream = new FileStream(ChangeFileExtension(target, ".nupkg"), FileMode.Create);
             builder.Save(outputStream);
 
-            Console.WriteLine($"Saved a package to {outputStream.Name}");
+            Console.WriteLine($"Saved package to {outputStream.Name}");
         }
 
         private static void Main(string[] args)
@@ -113,14 +143,14 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
                 foreach (var source in config.Search())
                 {
-                    var target = Path.Combine(config.TargetPath, Path.GetFileName(source));
+                    var target = ChangeFileDirectory(source, config.TargetPath);
 
                     try
                     {
                         var assembly = publicizer.CreatePublicAssembly(source, target);
                         Console.WriteLine($"Publicized {Path.GetFileName(source)} to {Path.GetFileName(target)}");
 
-                        GenerateNuGetPackage(target, assembly);
+                        GenerateNuGetPackage(config, target, assembly);
                     }
                     catch (Exception ex)
                     {
