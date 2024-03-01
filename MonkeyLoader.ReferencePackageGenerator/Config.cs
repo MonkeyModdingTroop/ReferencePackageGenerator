@@ -39,8 +39,6 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonProperty(Required = Required.Always)]
         public string SourcePath { get; set; } = Environment.CurrentDirectory;
 
-        public string Suffix { get; set; } = "";
-
         [JsonProperty(Required = Required.Always)]
         public string TargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Public");
 

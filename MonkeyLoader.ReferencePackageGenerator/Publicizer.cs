@@ -14,7 +14,7 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
         public AssemblyResolver Resolver { get; } = new();
 
-        public void CreatePublicAssembly(string source, string target)
+        public AssemblyDefinition CreatePublicAssembly(string source, string target)
         {
             var assembly = AssemblyDefinition.ReadAssembly(source,
                 new ReaderParameters { AssemblyResolver = Resolver });
@@ -55,6 +55,7 @@ namespace MonkeyLoader.ReferencePackageGenerator
             }
 
             assembly.Write(target);
+            return assembly;
         }
     }
 }
