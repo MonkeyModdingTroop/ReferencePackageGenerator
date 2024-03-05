@@ -126,9 +126,9 @@ $@"using System.Runtime.CompilerServices;
             builder.ContentFiles.Add(new ManifestContentFiles
             {
                 Include = $"any/any/IgnoresAccessChecksTo/{Path.GetFileNameWithoutExtension(target)}.cs",
-                BuildAction = "content",
-                Flatten = "true",
-                CopyToOutput = "true"
+                BuildAction = "compile",
+                Flatten = "false",
+                CopyToOutput = "false"
             });
 
             var packagePath = Path.Combine(config.NupkgTargetPath, $"{config.PackageIdPrefix}{Path.GetFileNameWithoutExtension(target)}.nupkg");
