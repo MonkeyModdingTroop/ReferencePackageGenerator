@@ -4,6 +4,9 @@ using NuGet.Packaging.Core;
 using NuGet.Packaging;
 using NuGet.Versioning;
 using Mono.Cecil;
+using NuGet.Common;
+using NuGet.Protocol.Core.Types;
+using NuGet.Protocol;
 
 namespace MonkeyLoader.ReferencePackageGenerator
 {
@@ -20,19 +23,69 @@ namespace MonkeyLoader.ReferencePackageGenerator
         private static string ChangeFileExtension(string file, string newExtension)
             => Path.Combine(Path.GetDirectoryName(file)!, $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}");
 
-        private static void GenerateNuGetPackage(Config config, string target, AssemblyDefinition assembly)
+        private static Version CombineVersions(Version primary, Version boost)
         {
-            var builder = new PackageBuilder();
-            builder.Id = Path.GetFileNameWithoutExtension(target);
+            var primaries = new[] { primary.Major, primary.Minor, primary.Build, primary.Revision };
+            var boosts = new[] { boost.Major, boost.Minor, boost.Build, boost.Revision };
 
-            builder.Version = config.VersionOverrides.TryGetValue(Path.GetFileName(target), out var versionOverride)
-                ? new NuGetVersion(versionOverride)
-                : new NuGetVersion(assembly.Name.Version);
+            var merged = primaries.Zip(boosts, CombineVersionSegments).TakeWhile(segment => segment > -1).ToArray();
 
-            builder.Title = $"Publicized {Path.GetFileNameWithoutExtension(target)} Reference";
-            builder.Description = $"Publicized reference package for {Path.GetFileName(target)}.";
+            return merged.Length switch
+            {
+                2 => new Version(merged[0], merged[1]),
+                3 => new Version(merged[0], merged[1], merged[2]),
+                4 => new Version(merged[0], merged[1], merged[2], merged[3]),
+                _ => throw new InvalidOperationException("Need at least two segments in version!")
+            };
+        }
+
+        private static int CombineVersionSegments(int primary, int boost)
+        {
+            if (boost == -1)
+                return primary;
+
+            if (primary == -1)
+                return boost;
+
+            return primary + boost;
+        }
+
+        private static string GenerateIgnoresAccessChecksToFile(string target)
+        {
+            var text =
+$@"using System.Runtime.CompilerServices;
+
+[assembly: IgnoresAccessChecksTo(""{Path.GetFileNameWithoutExtension(target)}"")]";
+
+            var csFile = ChangeFileExtension(target, ".cs");
+            File.WriteAllText(csFile, text);
+
+            return csFile;
+        }
+
+        private static async Task GenerateNuGetPackageAsync(Config config, string target, AssemblyDefinition assembly)
+        {
+            var version = config.VersionOverrides.TryGetValue(Path.GetFileName(target), out var versionOverride)
+            ? versionOverride
+            : assembly.Name.Version;
+
+            version = CombineVersions(version, config.VersionBoost);
+
+            var builder = new PackageBuilder
+            {
+                Id = $"{config.PackageIdPrefix}{Path.GetFileNameWithoutExtension(target)}",
+                Version = new NuGetVersion(version),
+
+                Title = $"Publicized {Path.GetFileNameWithoutExtension(target)} Reference",
+                Description = $"Publicized reference package for {Path.GetFileName(target)}.",
+
+                IconUrl = string.IsNullOrWhiteSpace(config.IconUrl) ? null : new Uri(config.IconUrl),
+                ProjectUrl = string.IsNullOrWhiteSpace(config.ProjectUrl) ? null : new Uri(config.ProjectUrl),
+                Repository = new RepositoryMetadata(Path.GetExtension(config.RepositoryUrl)?.TrimStart('.'), config.RepositoryUrl, null, null)
+            };
 
             builder.Authors.AddRange(config.Authors);
+
             builder.Tags.AddRange(config.Tags);
             builder.Tags.Add("MonkeyLoader");
             builder.Tags.Add("ReferencePackageGenerator");
@@ -59,10 +112,53 @@ namespace MonkeyLoader.ReferencePackageGenerator
                     builder.AddFiles("", docFile, destinationPath);
             }
 
-            using var outputStream = new FileStream(ChangeFileExtension(target, ".nupkg"), FileMode.Create);
-            builder.Save(outputStream);
+            if (File.Exists(config.IconPath))
+            {
+                var iconName = Path.GetFileName(config.IconPath);
+                builder.AddFiles("", config.IconPath, iconName);
+                builder.Icon = iconName;
+            }
 
-            Console.WriteLine($"Saved package to {outputStream.Name}");
+            var ignoreAccessChecksToPath = GenerateIgnoresAccessChecksToFile(target);
+            builder.AddFiles("", ignoreAccessChecksToPath, "contentFiles/any/any/IgnoresAccessChecksTo/");
+            builder.AddFiles("", ignoreAccessChecksToPath, "content/IgnoresAccessChecksTo/");
+
+            builder.ContentFiles.Add(new ManifestContentFiles
+            {
+                Include = $"any/any/IgnoresAccessChecksTo/{Path.GetFileNameWithoutExtension(target)}.cs",
+                BuildAction = "content",
+                Flatten = "true",
+                CopyToOutput = "true"
+            });
+
+            var packagePath = Path.Combine(config.NupkgTargetPath, $"{config.PackageIdPrefix}{Path.GetFileNameWithoutExtension(target)}.nupkg");
+            using (var outputStream = new FileStream(packagePath, FileMode.Create))
+                builder.Save(outputStream);
+
+            Console.WriteLine($"Saved package to {packagePath}");
+
+            if (config.PublishTarget is null || !config.PublishTarget.Publish)
+            {
+                Console.WriteLine("No PublishTarget defined or publishing disabled, skipping package upload.");
+                return;
+            }
+
+            Console.WriteLine($"Publishing package to {config.PublishTarget.Source}");
+
+            var cache = new SourceCacheContext();
+            var repository = Repository.Factory.GetCoreV3(config.PublishTarget.Source);
+            var resource = await repository.GetResourceAsync<PackageUpdateResource>();
+
+            try
+            {
+                await resource.Push(new List<string>() { packagePath }, null, 20, false, source => config.PublishTarget.ApiKey, source => null, false, true, null, ConsoleLogger.Instance);
+                Console.WriteLine("Finished publishing package!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to publish package!");
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         private static void Main(string[] args)
@@ -130,11 +226,22 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
                 try
                 {
-                    Directory.CreateDirectory(config.TargetPath);
+                    Directory.CreateDirectory(config.DllTargetPath);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to create target directory: {config.TargetPath}");
+                    Console.WriteLine($"Failed to create DLL target directory: {config.DllTargetPath}");
+                    Console.WriteLine(ex.ToString());
+                    continue;
+                }
+
+                try
+                {
+                    Directory.CreateDirectory(config.NupkgTargetPath);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to create nupkg target directory: {config.NupkgTargetPath}");
                     Console.WriteLine(ex.ToString());
                     continue;
                 }
@@ -143,14 +250,14 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
                 foreach (var source in config.Search())
                 {
-                    var target = ChangeFileDirectory(source, config.TargetPath);
+                    var target = ChangeFileDirectory(source, config.DllTargetPath);
 
                     try
                     {
                         var assembly = publicizer.CreatePublicAssembly(source, target);
                         Console.WriteLine($"Publicized {Path.GetFileName(source)} to {Path.GetFileName(target)}");
 
-                        GenerateNuGetPackage(config, target, assembly);
+                        GenerateNuGetPackageAsync(config, target, assembly).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
                     {

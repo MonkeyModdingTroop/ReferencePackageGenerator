@@ -17,6 +17,8 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
         public string[] Authors { get; set; } = [];
 
+        public string DllTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Public");
+
         [JsonIgnore]
         public string DocumentationPath => _documentationPath ?? SourcePath;
 
@@ -31,6 +33,10 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonIgnore]
         public Regex[] Excludes { get; private set; } = [];
 
+        public string IconPath { get; set; }
+
+        public string IconUrl { get; set; }
+
         public string[] IncludePatterns
         {
             get => Includes.Select(regex => regex.ToString()).ToArray();
@@ -42,19 +48,36 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonIgnore]
         public Regex[] Includes { get; private set; }
 
+        public string NupkgTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Packages");
+
+        public string PackageIdPrefix { get; set; } = string.Empty;
+
+        public string? ProjectUrl { get; set; }
+        public NuGetPublishTarget? PublishTarget { get; set; }
+
         public bool Recursive { get; set; } = false;
+
+        public string? RepositoryUrl { get; set; }
 
         [JsonProperty(Required = Required.Always)]
         public string SourcePath { get; set; } = Environment.CurrentDirectory;
 
         public string[] Tags { get; set; } = [];
+
         public string TargetFramework { get; set; }
 
-        [JsonProperty(Required = Required.Always)]
-        public string TargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Public");
+        [JsonIgnore]
+        public Version VersionBoost { get; set; } = new();
 
         [JsonIgnore]
         public Dictionary<string, Version> VersionOverrides { get; set; }
+
+        [JsonProperty(nameof(VersionBoost))]
+        private string? VersionBoostString
+        {
+            get => VersionBoost.ToString();
+            set => VersionBoost = value is null ? new() : new(value);
+        }
 
         [JsonProperty(nameof(VersionOverrides))]
         private Dictionary<string, string> VersionOverrideStrings
