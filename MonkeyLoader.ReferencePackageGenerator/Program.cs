@@ -74,7 +74,7 @@ $@"using System.Runtime.CompilerServices;
             var builder = new PackageBuilder
             {
                 Id = $"{config.PackageIdPrefix}{Path.GetFileNameWithoutExtension(target)}",
-                Version = new NuGetVersion(version),
+                Version = new NuGetVersion(version, config.VersionReleaseLabel),
 
                 Title = $"Publicized {Path.GetFileNameWithoutExtension(target)} Reference",
                 Description = $"Publicized reference package for {Path.GetFileName(target)}.",
@@ -120,12 +120,12 @@ $@"using System.Runtime.CompilerServices;
             }
 
             var ignoreAccessChecksToPath = GenerateIgnoresAccessChecksToFile(target);
-            builder.AddFiles("", ignoreAccessChecksToPath, "contentFiles/any/any/IgnoresAccessChecksTo/");
+            builder.AddFiles("", ignoreAccessChecksToPath, "contentFiles/cs/any/IgnoresAccessChecksTo/");
             builder.AddFiles("", ignoreAccessChecksToPath, "content/IgnoresAccessChecksTo/");
 
             builder.ContentFiles.Add(new ManifestContentFiles
             {
-                Include = $"any/any/IgnoresAccessChecksTo/{Path.GetFileNameWithoutExtension(target)}.cs",
+                Include = $"cs/any/IgnoresAccessChecksTo/{Path.GetFileNameWithoutExtension(target)}.cs",
                 BuildAction = "compile",
                 Flatten = "false",
                 CopyToOutput = "false"
@@ -223,6 +223,7 @@ $@"using System.Runtime.CompilerServices;
 
                 var publicizer = new Publicizer();
                 publicizer.Resolver.AddSearchDirectory(config.SourcePath);
+                publicizer.Resolver.AddSearchDirectory("C:\\Program Files (x86)\\dotnet\\shared\\Microsoft.NETCore.App\\9.0.6");
 
                 try
                 {

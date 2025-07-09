@@ -72,6 +72,8 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonIgnore]
         public Dictionary<string, Version> VersionOverrides { get; set; }
 
+        public string VersionReleaseLabel { get; set; }
+
         [JsonProperty(nameof(VersionBoost))]
         private string? VersionBoostString
         {
@@ -88,8 +90,8 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
         public Config()
         {
-            IncludePatterns = [@".+\.dll", @".+\.exe"];
-            ExcludePatterns = [@"Microsoft\..+", @"System\..+", @"Mono\..+", @"UnityEngine\..+"];
+            IncludePatterns = [@".+\.dll$", @".+\.exe$"];
+            ExcludePatterns = [@"^Microsoft\..+", @"^System\..+", @"^Mono\..+", @"^UnityEngine\..+"];
         }
 
         public IEnumerable<string> Search()
