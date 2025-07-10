@@ -222,8 +222,8 @@ $@"using System.Runtime.CompilerServices;
                 }
 
                 var publicizer = new Publicizer();
-                publicizer.Resolver.AddSearchDirectory(config.SourcePath);
                 publicizer.Resolver.AddSearchDirectory("C:\\Program Files (x86)\\dotnet\\shared\\Microsoft.NETCore.App\\9.0.6");
+                publicizer.Resolver.AddSearchDirectory(config.SourcePath);
 
                 try
                 {

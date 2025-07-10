@@ -98,10 +98,12 @@ namespace MonkeyLoader.ReferencePackageGenerator
         {
             foreach (var path in Directory.EnumerateFiles(SourcePath, "*", Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly))
             {
-                if (Includes.Length != 0 && !Includes.Any(regex => regex.IsMatch(path)))
+                var fileName = Path.GetFileName(path);
+
+                if (Includes.Length != 0 && !Includes.Any(regex => regex.IsMatch(fileName)))
                     continue;
 
-                if (Excludes.Length != 0 && Excludes.Any(regex => regex.IsMatch(path)))
+                if (Excludes.Length != 0 && Excludes.Any(regex => regex.IsMatch(fileName)))
                     continue;
 
                 yield return path;
