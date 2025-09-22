@@ -1,4 +1,5 @@
 ﻿using Mono.Cecil;
+using Mono.Cecil.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,28 +11,26 @@ namespace MonkeyLoader.ReferencePackageGenerator
 {
     public class Publicizer
     {
-        private static readonly Type _compilerGeneratedType = typeof(CompilerGeneratedAttribute);
-
         public AssemblyResolver Resolver { get; } = new();
 
-        public AssemblyDefinition CreatePublicAssembly(string source, string target)
+        public Publicizer()
         {
-            var assembly = AssemblyDefinition.ReadAssembly(source,
-                new ReaderParameters { AssemblyResolver = Resolver });
+            Resolver.AddSearchDirectory(Path.GetDirectoryName(typeof(string).Assembly.Location)!);
+        }
 
+        public AssemblyDefinition LoadAssembly(string source)
+            => AssemblyDefinition.ReadAssembly(source, new() { AssemblyResolver = Resolver });
+
+        public AssemblyDefinition Publicize(AssemblyDefinition assembly)
+        {
             foreach (var module in assembly.Modules)
             {
                 foreach (var type in module.GetTypes())
                 {
-                    if (!type.IsNested)
-                    {
-                        type.IsPublic = true;
-                    }
-                    else
-                    {
-                        type.IsPublic = true;
+                    type.IsPublic = true;
+
+                    if (type.IsNested)
                         type.IsNestedPublic = true;
-                    }
 
                     foreach (var field in type.Fields)
                     {
@@ -41,20 +40,35 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
                     foreach (var method in type.Methods)
                     {
-                        if (/*UseEmptyMethodBodies && */method.HasBody)
-                        {
-                            var emptyBody = new Mono.Cecil.Cil.MethodBody(method);
-                            emptyBody.Instructions.Add(Mono.Cecil.Cil.Instruction.Create(Mono.Cecil.Cil.OpCodes.Ldnull));
-                            emptyBody.Instructions.Add(Mono.Cecil.Cil.Instruction.Create(Mono.Cecil.Cil.OpCodes.Throw));
-                            method.Body = emptyBody;
-                        }
-
                         method.IsPublic = true;
                     }
                 }
             }
 
-            assembly.Write(target);
+            return assembly;
+        }
+
+        public AssemblyDefinition StripMethodBodies(AssemblyDefinition assembly, bool mockAssembly = false)
+        {
+            foreach (var module in assembly.Modules)
+            {
+                foreach (var type in module.GetTypes())
+                {
+                    foreach (var method in type.Methods.Where(method => method.HasBody))
+                    {
+                        var body = new MethodBody(method);
+
+                        if (mockAssembly)
+                        {
+                            body.Instructions.Add(Instruction.Create(OpCodes.Ldnull));
+                            body.Instructions.Add(Instruction.Create(OpCodes.Throw));
+                        }
+
+                        method.Body = body;
+                    }
+                }
+            }
+
             return assembly;
         }
     }

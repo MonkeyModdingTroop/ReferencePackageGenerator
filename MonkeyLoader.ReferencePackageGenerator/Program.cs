@@ -23,6 +23,9 @@ namespace MonkeyLoader.ReferencePackageGenerator
         private static string ChangeFileExtension(string file, string newExtension)
             => Path.Combine(Path.GetDirectoryName(file)!, $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}");
 
+        private static string GetFilenameWithChangedFileExtension(string file, string newExtension)
+            => $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}";
+
         private static Version CombineVersions(Version primary, Version boost)
         {
             var primaries = new[] { primary.Major, primary.Minor, primary.Build, primary.Revision };
@@ -63,21 +66,19 @@ $@"using System.Runtime.CompilerServices;
             return csFile;
         }
 
-        private static async Task GenerateNuGetPackageAsync(Config config, string target, AssemblyDefinition assembly)
+        private static async Task GenerateNuGetPackageAsync(Config config, string targetAssembly, Version version)
         {
-            var version = config.VersionOverrides.TryGetValue(Path.GetFileName(target), out var versionOverride)
-            ? versionOverride
-            : assembly.Name.Version;
-
-            version = CombineVersions(version, config.VersionBoost);
+            var documentationPath = ChangeFileExtension(targetAssembly, ".xml");
+            var ignoreAccessChecksToPath = ChangeFileExtension(targetAssembly, ".cs");
+            var isPublicized = File.Exists(ignoreAccessChecksToPath);
 
             var builder = new PackageBuilder
             {
-                Id = $"{config.PackageIdPrefix}{Path.GetFileNameWithoutExtension(target)}",
+                Id = $"{config.PackageIdPrefix}{Path.GetFileNameWithoutExtension(targetAssembly)}",
                 Version = new NuGetVersion(version, config.VersionReleaseLabel),
 
-                Title = $"Publicized {Path.GetFileNameWithoutExtension(target)} Reference",
-                Description = $"Publicized reference package for {Path.GetFileName(target)}.",
+                Title = $"{(isPublicized ? "Publicized " : "")}{Path.GetFileNameWithoutExtension(targetAssembly)} Reference",
+                Description = $"{(isPublicized ? "Publicized r" : "R")}eference package for {Path.GetFileName(targetAssembly)}.",
 
                 IconUrl = string.IsNullOrWhiteSpace(config.IconUrl) ? null : new Uri(config.IconUrl),
                 ProjectUrl = string.IsNullOrWhiteSpace(config.ProjectUrl) ? null : new Uri(config.ProjectUrl),
@@ -90,6 +91,7 @@ $@"using System.Runtime.CompilerServices;
             builder.Tags.Add("MonkeyLoader");
             builder.Tags.Add("ReferencePackageGenerator");
 
+            // How-to dependencies:
             //builder.DependencyGroups.Add(new PackageDependencyGroup(
             //    targetFramework: NuGetFramework.Parse("netstandard1.4"),
             //    packages: new[]
@@ -98,19 +100,10 @@ $@"using System.Runtime.CompilerServices;
             //    }));
 
             var destinationPath = $"ref/{config.TargetFramework}/";
-            builder.AddFiles("", target, destinationPath);
+            builder.AddFiles("", targetAssembly, destinationPath);
 
-            var docFile = ChangeFileDirectoryAndExtension(target, config.DocumentationPath, ".xml");
-            if (File.Exists(docFile))
-            {
-                builder.AddFiles("", docFile, destinationPath);
-            }
-            else
-            {
-                docFile = ChangeFileDirectoryAndExtension(target, config.SourcePath, ".xml");
-                if (File.Exists(docFile))
-                    builder.AddFiles("", docFile, destinationPath);
-            }
+            if (File.Exists(documentationPath))
+                builder.AddFiles("", documentationPath, destinationPath);
 
             if (File.Exists(config.IconPath))
             {
@@ -119,19 +112,21 @@ $@"using System.Runtime.CompilerServices;
                 builder.Icon = iconName;
             }
 
-            var ignoreAccessChecksToPath = GenerateIgnoresAccessChecksToFile(target);
-            builder.AddFiles("", ignoreAccessChecksToPath, "contentFiles/cs/any/IgnoresAccessChecksTo/");
-            builder.AddFiles("", ignoreAccessChecksToPath, "content/IgnoresAccessChecksTo/");
-
-            builder.ContentFiles.Add(new ManifestContentFiles
+            if (isPublicized)
             {
-                Include = $"cs/any/IgnoresAccessChecksTo/{Path.GetFileNameWithoutExtension(target)}.cs",
-                BuildAction = "compile",
-                Flatten = "false",
-                CopyToOutput = "false"
-            });
+                builder.AddFiles("", ignoreAccessChecksToPath, "contentFiles/cs/any/IgnoresAccessChecksTo/");
+                builder.AddFiles("", ignoreAccessChecksToPath, "content/IgnoresAccessChecksTo/");
 
-            var packagePath = Path.Combine(config.NupkgTargetPath, $"{config.PackageIdPrefix}{Path.GetFileNameWithoutExtension(target)}.nupkg");
+                builder.ContentFiles.Add(new ManifestContentFiles
+                {
+                    Include = $"cs/any/IgnoresAccessChecksTo/{GetFilenameWithChangedFileExtension(targetAssembly, ".cs")}",
+                    BuildAction = "compile",
+                    Flatten = "false",
+                    CopyToOutput = "false"
+                });
+            }
+
+            var packagePath = Path.Combine(config.NupkgTargetPath!, $"{config.PackageIdPrefix}{GetFilenameWithChangedFileExtension(targetAssembly, ".nupkg")}");
             using (var outputStream = new FileStream(packagePath, FileMode.Create))
                 builder.Save(outputStream);
 
@@ -151,7 +146,7 @@ $@"using System.Runtime.CompilerServices;
 
             try
             {
-                await resource.Push(new List<string>() { packagePath }, null, 20, false, source => config.PublishTarget.ApiKey, source => null, false, true, null, ConsoleLogger.Instance);
+                await resource.Push([packagePath], null, 20, false, source => config.PublishTarget.ApiKey, source => null, false, true, null, ConsoleLogger.Instance);
                 Console.WriteLine("Finished publishing package!");
             }
             catch (Exception ex)
@@ -222,47 +217,113 @@ $@"using System.Runtime.CompilerServices;
                 }
 
                 var publicizer = new Publicizer();
-                publicizer.Resolver.AddSearchDirectory("C:\\Program Files (x86)\\dotnet\\shared\\Microsoft.NETCore.App\\9.0.6");
                 publicizer.Resolver.AddSearchDirectory(config.SourcePath);
 
-                try
+                if (config.GenerateStrippedAssemblies)
                 {
-                    Directory.CreateDirectory(config.DllTargetPath);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to create DLL target directory: {config.DllTargetPath}");
-                    Console.WriteLine(ex.ToString());
-                    continue;
+                    try
+                    {
+                        Directory.CreateDirectory(config.StrippedAssembliesTargetPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to create stripped DLL target directory: {config.StrippedAssembliesTargetPath}");
+                        Console.WriteLine(ex.ToString());
+                        continue;
+                    }
                 }
 
-                try
+                if (config.GeneratePublicizedAssemblies)
                 {
-                    Directory.CreateDirectory(config.NupkgTargetPath);
+                    try
+                    {
+                        Directory.CreateDirectory(config.PublicizedAssembliesTargetPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to create publicized DLL target directory: {config.PublicizedAssembliesTargetPath}");
+                        Console.WriteLine(ex.ToString());
+                        continue;
+                    }
                 }
-                catch (Exception ex)
+
+                if (config.GenerateNugetPackages)
                 {
-                    Console.WriteLine($"Failed to create nupkg target directory: {config.NupkgTargetPath}");
-                    Console.WriteLine(ex.ToString());
-                    continue;
+                    try
+                    {
+                        Directory.CreateDirectory(config.NupkgTargetPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to create nupkg target directory: {config.NupkgTargetPath}");
+                        Console.WriteLine(ex.ToString());
+                        continue;
+                    }
                 }
 
                 Console.WriteLine($"Publicizing matching assembly files from: {config.SourcePath}");
 
                 foreach (var source in config.Search())
                 {
-                    var target = ChangeFileDirectory(source, config.DllTargetPath);
+                    string? packageTarget = null;
+                    var relativeSource = Path.GetRelativePath(Environment.CurrentDirectory, source);
+
+                    var docFile = ChangeFileDirectoryAndExtension(source, config.DocumentationPath, ".xml");
+                    if (!File.Exists(docFile))
+                    {
+                        docFile = ChangeFileDirectoryAndExtension(source, config.SourcePath, ".xml");
+                        if (!File.Exists(docFile))
+                            docFile = null;
+                    }
 
                     try
                     {
-                        var assembly = publicizer.CreatePublicAssembly(source, target);
-                        Console.WriteLine($"Publicized {Path.GetFileName(source)} to {Path.GetFileName(target)}");
+                        var assembly = publicizer.LoadAssembly(source);
+                        assembly = publicizer.StripMethodBodies(assembly);
 
-                        GenerateNuGetPackageAsync(config, target, assembly).GetAwaiter().GetResult();
+                        if (config.GenerateStrippedAssemblies)
+                        {
+                            var target = ChangeFileDirectory(source, config.StrippedAssembliesTargetPath);
+
+                            assembly.Write(target);
+                            packageTarget = target;
+
+                            if (docFile is not null)
+                                File.Copy(docFile, ChangeFileDirectory(docFile, config.StrippedAssembliesTargetPath), true);
+
+                            Console.WriteLine($"Stripped {relativeSource} to {Path.GetRelativePath(Environment.CurrentDirectory, target)}");
+                        }
+
+                        if (config.GeneratePublicizedAssemblies)
+                        {
+                            var target = ChangeFileDirectory(source, config.PublicizedAssembliesTargetPath);
+
+                            assembly = publicizer.Publicize(assembly);
+                            assembly.Write(target);
+                            packageTarget = target;
+
+                            GenerateIgnoresAccessChecksToFile(target);
+
+                            if (docFile is not null)
+                                File.Copy(docFile, ChangeFileDirectory(docFile, config.PublicizedAssembliesTargetPath), true);
+
+                            Console.WriteLine($"Publicized {relativeSource} to {Path.GetRelativePath(Environment.CurrentDirectory, target)}");
+                        }
+
+                        if (packageTarget is null || !config.GenerateNugetPackages)
+                            continue;
+
+                        var version = config.VersionOverrides.TryGetValue(Path.GetFileName(source), out var versionOverride)
+                            ? versionOverride
+                            : assembly.Name.Version;
+
+                        version = CombineVersions(version, config.VersionBoost);
+
+                        GenerateNuGetPackageAsync(config, packageTarget, version).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Failed to publicize assembly: {Path.GetFileName(source)}");
+                        Console.WriteLine($"Failed to process assembly: {Path.GetFileName(source)}");
                         Console.WriteLine(ex.ToString());
                         continue;
                     }

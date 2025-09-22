@@ -17,7 +17,23 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
         public string[] Authors { get; set; } = [];
 
-        public string DllTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Public");
+        public string? StrippedAssembliesTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Stripped");
+
+        public string? PublicizedAssembliesTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Publicized");
+
+        [JsonIgnore]
+        [MemberNotNullWhen(true, nameof(StrippedAssembliesTargetPath))]
+        public bool GenerateStrippedAssemblies => !string.IsNullOrWhiteSpace(StrippedAssembliesTargetPath);
+
+        [JsonIgnore]
+        [MemberNotNullWhen(true, nameof(PublicizedAssembliesTargetPath))]
+        public bool GeneratePublicizedAssemblies => !string.IsNullOrWhiteSpace(PublicizedAssembliesTargetPath);
+
+        [JsonIgnore]
+        [MemberNotNullWhen(true, nameof(NupkgTargetPath))]
+        public bool GenerateNugetPackages => !string.IsNullOrWhiteSpace(NupkgTargetPath);
+
+        public bool UseMockMethodBodies { get; set; } = false;
 
         [JsonIgnore]
         public string DocumentationPath => _documentationPath ?? SourcePath;
@@ -48,7 +64,7 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonIgnore]
         public Regex[] Includes { get; private set; }
 
-        public string NupkgTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Packages");
+        public string? NupkgTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Packages");
 
         public string PackageIdPrefix { get; set; } = string.Empty;
 
