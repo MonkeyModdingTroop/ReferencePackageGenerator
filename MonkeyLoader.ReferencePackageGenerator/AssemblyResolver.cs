@@ -20,7 +20,7 @@ namespace MonkeyLoader.ReferencePackageGenerator
         }
 
         public void Dispose()
-        { }
+            => GC.SuppressFinalize(this);
 
         public AssemblyDefinition Resolve(AssemblyNameReference name)
             => Resolve(name, new ReaderParameters());
@@ -37,7 +37,7 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
         private AssemblyDefinition? SearchDirectory(AssemblyNameReference name, IEnumerable<string> directories, ReaderParameters parameters)
         {
-            var extensions = name.IsWindowsRuntime ? new[] { ".winmd", ".dll" } : new[] { ".exe", ".dll" };
+            string[] extensions = name.IsWindowsRuntime ? [".winmd", ".dll"] : [".exe", ".dll"];
 
             foreach (var directory in directories)
             {

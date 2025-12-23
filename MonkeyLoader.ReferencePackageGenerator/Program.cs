@@ -23,9 +23,6 @@ namespace MonkeyLoader.ReferencePackageGenerator
         private static string ChangeFileExtension(string file, string newExtension)
             => Path.Combine(Path.GetDirectoryName(file)!, $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}");
 
-        private static string GetFilenameWithChangedFileExtension(string file, string newExtension)
-            => $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}";
-
         private static Version CombineVersions(Version primary, Version boost)
         {
             var primaries = new[] { primary.Major, primary.Minor, primary.Build, primary.Revision };
@@ -53,17 +50,14 @@ namespace MonkeyLoader.ReferencePackageGenerator
             return primary + boost;
         }
 
-        private static string GenerateIgnoresAccessChecksToFile(string target)
+        private static void GenerateIgnoresAccessChecksToFile(string target)
         {
             var text =
 $@"using System.Runtime.CompilerServices;
 
 [assembly: IgnoresAccessChecksTo(""{Path.GetFileNameWithoutExtension(target)}"")]";
 
-            var csFile = ChangeFileExtension(target, ".cs");
-            File.WriteAllText(csFile, text);
-
-            return csFile;
+            File.WriteAllText(target, text);
         }
 
         private static async Task GenerateNuGetPackageAsync(Config config, string targetAssembly, Version version)
@@ -156,6 +150,9 @@ $@"using System.Runtime.CompilerServices;
             }
         }
 
+        private static string GetFilenameWithChangedFileExtension(string file, string newExtension)
+            => $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}";
+
         private static void Main(string[] args)
         {
             if (args.Length < 1)
@@ -238,6 +235,7 @@ $@"using System.Runtime.CompilerServices;
                     try
                     {
                         Directory.CreateDirectory(config.PublicizedAssembliesTargetPath);
+                        Directory.CreateDirectory(config.IgnoreAccessChecksToPath);
                     }
                     catch (Exception ex)
                     {
@@ -302,7 +300,7 @@ $@"using System.Runtime.CompilerServices;
                             assembly.Write(target);
                             packageTarget = target;
 
-                            GenerateIgnoresAccessChecksToFile(target);
+                            GenerateIgnoresAccessChecksToFile(ChangeFileDirectoryAndExtension(source, config.IgnoreAccessChecksToPath, ".cs"));
 
                             if (docFile is not null)
                                 File.Copy(docFile, ChangeFileDirectory(docFile, config.PublicizedAssembliesTargetPath), true);

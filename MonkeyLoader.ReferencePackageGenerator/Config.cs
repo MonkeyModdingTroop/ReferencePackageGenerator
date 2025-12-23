@@ -13,27 +13,12 @@ namespace MonkeyLoader.ReferencePackageGenerator
     public class Config
     {
         [JsonProperty(nameof(DocumentationPath))]
-        private string? _documentationPath = null;
+        private string? _documentationPath;
+
+        [JsonProperty(nameof(IgnoreAccessChecksToPath))]
+        private string? _ignoreAccessChecksToPath;
 
         public string[] Authors { get; set; } = [];
-
-        public string? StrippedAssembliesTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Stripped");
-
-        public string? PublicizedAssembliesTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Publicized");
-
-        [JsonIgnore]
-        [MemberNotNullWhen(true, nameof(StrippedAssembliesTargetPath))]
-        public bool GenerateStrippedAssemblies => !string.IsNullOrWhiteSpace(StrippedAssembliesTargetPath);
-
-        [JsonIgnore]
-        [MemberNotNullWhen(true, nameof(PublicizedAssembliesTargetPath))]
-        public bool GeneratePublicizedAssemblies => !string.IsNullOrWhiteSpace(PublicizedAssembliesTargetPath);
-
-        [JsonIgnore]
-        [MemberNotNullWhen(true, nameof(NupkgTargetPath))]
-        public bool GenerateNugetPackages => !string.IsNullOrWhiteSpace(NupkgTargetPath);
-
-        public bool UseMockMethodBodies { get; set; } = false;
 
         [JsonIgnore]
         public string DocumentationPath => _documentationPath ?? SourcePath;
@@ -49,9 +34,24 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonIgnore]
         public Regex[] Excludes { get; private set; } = [];
 
+        [JsonIgnore]
+        [MemberNotNullWhen(true, nameof(NupkgTargetPath))]
+        public bool GenerateNugetPackages => !string.IsNullOrWhiteSpace(NupkgTargetPath);
+
+        [JsonIgnore]
+        [MemberNotNullWhen(true, nameof(PublicizedAssembliesTargetPath), nameof(IgnoreAccessChecksToPath))]
+        public bool GeneratePublicizedAssemblies => !string.IsNullOrWhiteSpace(PublicizedAssembliesTargetPath);
+
+        [JsonIgnore]
+        [MemberNotNullWhen(true, nameof(StrippedAssembliesTargetPath))]
+        public bool GenerateStrippedAssemblies => !string.IsNullOrWhiteSpace(StrippedAssembliesTargetPath);
+
         public string IconPath { get; set; }
 
         public string IconUrl { get; set; }
+
+        [JsonIgnore]
+        public string? IgnoreAccessChecksToPath => _ignoreAccessChecksToPath ?? PublicizedAssembliesTargetPath;
 
         public string[] IncludePatterns
         {
@@ -65,22 +65,20 @@ namespace MonkeyLoader.ReferencePackageGenerator
         public Regex[] Includes { get; private set; }
 
         public string? NupkgTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Packages");
-
         public string PackageIdPrefix { get; set; } = string.Empty;
-
         public string? ProjectUrl { get; set; }
+        public string? PublicizedAssembliesTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Publicized");
         public NuGetPublishTarget? PublishTarget { get; set; }
-
         public bool Recursive { get; set; } = false;
-
         public string? RepositoryUrl { get; set; }
 
         [JsonProperty(Required = Required.Always)]
         public string SourcePath { get; set; } = Environment.CurrentDirectory;
 
+        public string? StrippedAssembliesTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Stripped");
         public string[] Tags { get; set; } = [];
-
         public string TargetFramework { get; set; }
+        public bool UseMockMethodBodies { get; set; } = false;
 
         [JsonIgnore]
         public Version VersionBoost { get; set; } = new();
