@@ -62,6 +62,14 @@ $@"using System.Runtime.CompilerServices;
 
         private static async Task GenerateNuGetPackageAsync(Config config, string targetAssembly, Version version)
         {
+            // This should add a package.props target that adds an assembly attribute like
+            /*
+                <AssemblyAttribute Include="System.Runtime.CompilerServices.IgnoresAccessChecksTo">
+                    <_Parameter1>AssemblyName</_Parameter1>
+                </AssemblyAttribute>
+            */
+            GenerateIgnoresAccessChecksToFile(ChangeFileExtension(targetAssembly, ".cs"));
+
             var documentationPath = ChangeFileExtension(targetAssembly, ".xml");
             var ignoreAccessChecksToPath = ChangeFileExtension(targetAssembly, ".cs");
             var isPublicized = File.Exists(ignoreAccessChecksToPath);
@@ -151,7 +159,7 @@ $@"using System.Runtime.CompilerServices;
         }
 
         private static string GetFilenameWithChangedFileExtension(string file, string newExtension)
-            => $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}";
+        => $"{Path.GetFileNameWithoutExtension(file)}{(newExtension.StartsWith('.') ? "" : ".")}{newExtension}";
 
         private static void Main(string[] args)
         {
@@ -235,7 +243,6 @@ $@"using System.Runtime.CompilerServices;
                     try
                     {
                         Directory.CreateDirectory(config.PublicizedAssembliesTargetPath);
-                        Directory.CreateDirectory(config.IgnoreAccessChecksToPath);
                     }
                     catch (Exception ex)
                     {
@@ -299,8 +306,6 @@ $@"using System.Runtime.CompilerServices;
                             assembly = publicizer.Publicize(assembly);
                             assembly.Write(target);
                             packageTarget = target;
-
-                            GenerateIgnoresAccessChecksToFile(ChangeFileDirectoryAndExtension(source, config.IgnoreAccessChecksToPath, ".cs"));
 
                             if (docFile is not null)
                                 File.Copy(docFile, ChangeFileDirectory(docFile, config.PublicizedAssembliesTargetPath), true);

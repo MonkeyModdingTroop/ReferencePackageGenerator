@@ -15,9 +15,6 @@ namespace MonkeyLoader.ReferencePackageGenerator
         [JsonProperty(nameof(DocumentationPath))]
         private string? _documentationPath;
 
-        [JsonProperty(nameof(IgnoreAccessChecksToPath))]
-        private string? _ignoreAccessChecksToPath;
-
         public string[] Authors { get; set; } = [];
 
         [JsonIgnore]
@@ -39,7 +36,7 @@ namespace MonkeyLoader.ReferencePackageGenerator
         public bool GenerateNugetPackages => !string.IsNullOrWhiteSpace(NupkgTargetPath);
 
         [JsonIgnore]
-        [MemberNotNullWhen(true, nameof(PublicizedAssembliesTargetPath), nameof(IgnoreAccessChecksToPath))]
+        [MemberNotNullWhen(true, nameof(PublicizedAssembliesTargetPath))]
         public bool GeneratePublicizedAssemblies => !string.IsNullOrWhiteSpace(PublicizedAssembliesTargetPath);
 
         [JsonIgnore]
@@ -49,9 +46,6 @@ namespace MonkeyLoader.ReferencePackageGenerator
         public string IconPath { get; set; }
 
         public string IconUrl { get; set; }
-
-        [JsonIgnore]
-        public string? IgnoreAccessChecksToPath => _ignoreAccessChecksToPath ?? PublicizedAssembliesTargetPath;
 
         public string[] IncludePatterns
         {
