@@ -1,28 +1,26 @@
 ﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace MonkeyLoader.ReferencePackageGenerator
 {
     [JsonObject]
     public class Config
     {
-        [JsonProperty(nameof(DocumentationPath))]
-        private string? _documentationPath;
+        [JsonProperty($"{nameof(DocumentationPath)}s", NullValueHandling = NullValueHandling.Ignore)]
+        private string[]? _documentationPaths;
+
+        [JsonProperty($"{nameof(SourcePath)}s", NullValueHandling = NullValueHandling.Ignore)]
+        private string[] _sourcePaths = [Environment.CurrentDirectory];
 
         public string[] Authors { get; set; } = [];
 
         [JsonIgnore]
-        public string DocumentationPath => _documentationPath ?? SourcePath;
+        public string DocumentationPath => _documentationPaths?.FirstOrDefault(Directory.Exists) ?? SourcePath;
 
         public string[] ExcludePatterns
         {
-            get => Excludes.Select(regex => regex.ToString()).ToArray();
+            get => [.. Excludes.Select(regex => regex.ToString())];
 
             [MemberNotNull(nameof(Excludes))]
             set => Excludes = value?.Select(pattern => new Regex(pattern, RegexOptions.IgnoreCase)).ToArray() ?? [];
@@ -49,7 +47,7 @@ namespace MonkeyLoader.ReferencePackageGenerator
 
         public string[] IncludePatterns
         {
-            get => Includes.Select(regex => regex.ToString()).ToArray();
+            get => [.. Includes.Select(regex => regex.ToString())];
 
             [MemberNotNull(nameof(Includes))]
             set => Includes = value?.Select(pattern => new Regex(pattern, RegexOptions.IgnoreCase)).ToArray() ?? [];
@@ -66,8 +64,8 @@ namespace MonkeyLoader.ReferencePackageGenerator
         public bool Recursive { get; set; } = false;
         public string? RepositoryUrl { get; set; }
 
-        [JsonProperty(Required = Required.Always)]
-        public string SourcePath { get; set; } = Environment.CurrentDirectory;
+        [JsonIgnore]
+        public string SourcePath => _sourcePaths.First(Directory.Exists);
 
         public string? StrippedAssembliesTargetPath { get; set; } = Path.Combine(Environment.CurrentDirectory, "Stripped");
         public string[] Tags { get; set; } = [];

@@ -1,14 +1,10 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 
 namespace MonkeyLoader.ReferencePackageGenerator
 {
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "API")]
     public class Publicizer
     {
         public AssemblyResolver Resolver { get; } = new();

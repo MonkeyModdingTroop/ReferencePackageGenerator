@@ -1,10 +1,7 @@
 ﻿using Newtonsoft.Json;
-using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.Packaging;
 using NuGet.Versioning;
-using Mono.Cecil;
-using NuGet.Common;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol;
 

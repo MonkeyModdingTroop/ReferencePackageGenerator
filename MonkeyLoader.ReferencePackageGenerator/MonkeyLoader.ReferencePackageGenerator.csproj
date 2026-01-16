@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <Version>1.0.0</Version>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -14,5 +14,4 @@
     <PackageReference Include="NuGet.Packaging" Version="6.9.1" />
     <PackageReference Include="NuGet.Protocol" Version="6.9.1" />
   </ItemGroup>
-
 </Project>
