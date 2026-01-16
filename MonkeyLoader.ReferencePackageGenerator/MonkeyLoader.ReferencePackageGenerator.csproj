@@ -1,12 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <Version>1.0.0</Version>
-    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ReferencePackageGenerator</AssemblyName>
+    
+    <RollForward>Major</RollForward>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>ReferencePackageGenerator</AssemblyName>
   </PropertyGroup>
+  
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    
+    <PackageId>MonkeyLoader.ReferencePackageGenerator</PackageId>
+    <ToolCommandName>ReferencePackageGenerator</ToolCommandName>
+    
+    <Title>Reference Package Generator</Title>
+    <Authors>Banane9</Authors>
+    <Description>This MonkeyLoader tool allows generating stripped and / or publicized reference assemblies to distribute for modding purposes in particular.
+Optionally, NuGet packages can be created from them as well, including uploading them NuGet feeds automatically.
+
+Various configuration options for which assemblies to include and how to version them are available.
+
+Usage: dotnet tool ReferencePackageGenerator configPaths...
+
+There can be any number of config paths, which will be handled one by one.
+Missing config files will be generated.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/MonkeyModdingTroop/ReferencePackageGenerator</PackageProjectUrl>
+    <RepositoryUrl>$(PackageProjectUrl).git</RepositoryUrl>
+    <PackageTags>mod;mods;monkeyloader;tool;strip;stripped;publicize;publicized;reference;assembly;assemblies;nuget;packages;</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.11.5" />
